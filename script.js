@@ -1,61 +1,101 @@
-import express from 'express';
-import cors from 'cors';
-import bodyParser from 'body-parser';
-import { Configuration, OpenAIApi } from 'openai';
+const chatBox = document.getElementById('chat-box');
+const chatForm = document.getElementById('chat-form');
+const userInput = document.getElementById('user-input');
 
-const app = express();
-const port = 3000;
+const apiKeyInput = document.getElementById('api-key-input');
+const saveApiKeyBtn = document.getElementById('save-api-key-btn');
+const apiKeyContainer = document.getElementById('api-key-container');
 
-app.use(cors());
-app.use(bodyParser.json());
+let OPENAI_API_KEY = null;
 
-// তোমার OpenAI API কী এখানে বসাও (private রাখবে)
-const configuration = new Configuration({
-  apiKey: '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',
+saveApiKeyBtn.addEventListener('click', () => {
+  const key = apiKeyInput.value.trim();
+  if (!key.startsWith('sk-')) {
+    alert('Please enter a valid OpenAI API key starting with "sk-".');
+    return;
+  }
+  OPENAI_API_KEY = key;
+  apiKeyContainer.style.display = 'none';
+  chatBox.style.display = 'flex';
+  chatForm.style.display = 'flex';
+  userInput.focus();
 });
 
-const openai = new OpenAIApi(configuration);
+function appendMessage(text, sender) {
+  const msgDiv = document.createElement('div');
+  msgDiv.classList.add('message', sender);
+  msgDiv.textContent = text;
+  chatBox.appendChild(msgDiv);
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
 
-app.post('/chat', async (req, res) => {
+async function getChatGPTResponse(message) {
+  if (!OPENAI_API_KEY) {
+    return 'API key not set. Please enter your API key.';
+  }
+
+  const lowerMsg = message.toLowerCase();
+  if (lowerMsg.includes('your name') || lowerMsg.includes('who are you') || lowerMsg.includes('nam ki')) {
+    return 'আমার নাম Mahabub Tamim। তুমি আমার সাথে কথা বলছো। 😊';
+  }
+
+  const data = {
+    model: 'gpt-3.5-turbo',
+    messages: [
+      {
+        role: 'system',
+        content: 'তুমি Mahabub Tamim, একজন বন্ধুত্বপূর্ণ এবং মিষ্টি বাংলা ভাষায় কথা বলা চ্যাটবট, যেভাবে ব্যবহারকারী তার গার্লফ্রেন্ডের সাথে কথা বলে সেরকম।',
+      },
+      {
+        role: 'user',
+        content: message,
+      },
+    ],
+    max_tokens: 150,
+    temperature: 0.9,
+  };
+
   try {
-    const { message } = req.body;
-
-    if (!message) {
-      return res.status(400).json({ error: 'Message is required' });
-    }
-
-    // বিশেষ উত্তর যদি প্রয়োজন হয় (যেমন নাম)
-    if (
-      message.toLowerCase().includes('your name') ||
-      message.toLowerCase().includes('who are you') ||
-      message.toLowerCase().includes('nam ki')
-    ) {
-      return res.json({ reply: 'আমার নাম Mahabub Tamim। তুমি আমার সাথে কথা বলছো। 😊' });
-    }
-
-    const completion = await openai.createChatCompletion({
-      model: 'gpt-3.5-turbo',
-      messages: [
-        {
-          role: 'system',
-          content:
-            'তুমি Mahabub Tamim, একজন বন্ধুত্বপূর্ণ এবং মিষ্টি বাংলা ভাষায় কথা বলা চ্যাটবট, যেভাবে ব্যবহারকারী তার গার্লফ্রেন্ডের সাথে কথা বলে সেরকম।',
-        },
-        { role: 'user', content: message },
-      ],
-      max_tokens: 150,
-      temperature: 0.9,
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify(data),
     });
 
-    const reply = completion.data.choices[0].message.content.trim();
+    const json = await response.json();
 
-    res.json({ reply });
+    if (json.error) {
+      return `Error: ${json.error.message || 'Unknown error'}`;
+    }
+
+    return json.choices[0].message.content.trim();
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'সার্ভার ত্রুটি ঘটেছে। পরে আবার চেষ্টা করুন।' });
+    return 'আমার সাথে কথা বলতে সমস্যা হচ্ছে, দয়া করে পরে চেষ্টা করো।';
   }
-});
+}
 
-app.listen(port, () => {
-  console.log(`Server listening at http://localhost:${port}`);
+chatForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  let userText = userInput.value.trim();
+  if (!userText) return;
+
+  appendMessage(userText, 'user');
+  appendMessage('Typing...', 'bot');
+
+  userInput.value = '';
+  userInput.focus();
+
+  const botResponse = await getChatGPTResponse(userText);
+
+  const typingElem = document.querySelector('.message.bot:last-child');
+  if (typingElem && typingElem.textContent === 'Typing...') {
+    typingElem.remove();
+  }
+
+  appendMessage(botResponse, 'bot');
 });
