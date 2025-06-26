@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Mahabub Tamim Chatbot</title>
+  <title>Mahabub Tamim Chatbot with User API Key</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -11,8 +11,19 @@
     <div class="chat-header">
       <h2>Mahabub Tamim 🤖</h2>
     </div>
-    <div id="chat-box" class="chat-box"></div>
-    <form id="chat-form" autocomplete="off">
+
+    <div id="api-key-container" class="api-key-container">
+      <label for="api-key-input">Enter your OpenAI API Key:</label>
+      <input id="api-key-input" type="password" placeholder="sk-..." />
+      <button id="save-api-key-btn">Save API Key</button>
+      <p style="font-size: 0.9em; color: #555; margin-top: 8px;">
+        Your API key is stored only in this session (not sent anywhere).
+      </p>
+    </div>
+
+    <div id="chat-box" class="chat-box" style="display:none;"></div>
+
+    <form id="chat-form" autocomplete="off" style="display:none;">
       <input
         id="user-input"
         type="text"
